@@ -26,6 +26,7 @@ import pymysql
 # Create option parsing object for addition of command line options
 p = optparse.OptionParser(description = 'Python Web Crawler & Scraper', prog = 'crawler', version = '0.01',
 							usage = "usage: %prog [options] URL")
+p.add_option('--max-depth', '-d', type='int', dest="depth", default=5, help='Maximum crawl depth.  Default: 5')
 
 
 # Parse options and arguments and assign to variables
@@ -82,13 +83,20 @@ def loadPage(startingSite):
 			print("Another error occurred.")
 	except urllib.error.URLError as e:
 		print('Got error {!r}, errorno is {}'.format(e, e.args[0]))
-		print("Exiting...")
+		# print("Exiting...")
 		# sys.exit()
 
 # Store URL to scraping database pages table	
 def storeUrl(url):
-	cursor.execute("INSERT INTO pages (content) VALUES (\"%s\")", (url))
-	cursor.connection.commit()
+	try:
+		cursor.execute("INSERT INTO pages (content) VALUES (\"%s\")", (url))
+		cursor.connection.commit()
+	except MySQLError as e:
+		print('Got error {!r}, errorno is {}'.format(e, e.args[0]))
+		f = open("alternative_output.txt", "a+")
+		f.write(url + "\n")
+		f.close
+
 
 
 # Join two lists
@@ -98,11 +106,13 @@ def union(a, b):
             a.append(e)
 
 # Function crawling all internal and external links
-def crawl_web(seed):
+def crawl_web(seed, max_depth):
     tocrawl = [seed]
     crawled = []
     graph = {}  # <url>, [list of pages it links to]
-    while tocrawl: 
+    next_depth = []
+    depth = 0
+    while tocrawl and depth <= max_depth: 
         page = tocrawl.pop()
         if page not in crawled:
         	if loadPage(page) is not None:
@@ -112,8 +122,12 @@ def crawl_web(seed):
 	            # Uncomment following line to store data in DB
 	            # storeUrl(page)
 	            graph[page] = allLinks
-	            union(tocrawl, allLinks)
+	            # union(tocrawl, allLinks)
+	            union(next_depth, allLinks)
 	            crawled.append(page)
+        if not tocrawl:
+            tocrawl, next_depth = next_depth, []
+            depth += 1
     return graph
 
 
@@ -121,12 +135,12 @@ if __name__ == '__main__':
 	if len(arguments) == 1:
 		try :
 			url = arguments[0]
-			crawl_web(url)
+			crawl_web(url, options.depth)
 		except KeyboardInterrupt:
 			print("Scan canceled by user.")
 			print("Thank you for crawling.")
-			cursor.close()
-			conn.close()
+			# cursor.close()
+			# conn.close()
 			sys.exit()
 	else:
 		p.print_help()
