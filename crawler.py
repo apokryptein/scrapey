@@ -27,6 +27,7 @@ import pymysql
 p = optparse.OptionParser(description = 'Python Web Crawler & Scraper', prog = 'crawler', version = '0.01',
 							usage = "usage: %prog [options] URL")
 p.add_option('--max-depth', '-d', type='int', dest="depth", default=5, help='Maximum crawl depth.  Default: 5')
+p.add_option('-s', action = 'store_true', help = 'Crawl only within scope of seed URL')
 
 
 # Parse options and arguments and assign to variables
@@ -106,7 +107,7 @@ def union(a, b):
             a.append(e)
 
 # Function crawling all internal and external links
-def crawl_web(seed, max_depth):
+def crawl_full_web(seed, max_depth):
     tocrawl = [seed]
     crawled = []
     graph = {}  # <url>, [list of pages it links to]
@@ -131,11 +132,39 @@ def crawl_web(seed, max_depth):
     return graph
 
 
+def crawl_scope(seed, max_depth):
+    tocrawl = [seed]
+    crawled = []
+    graph = {}  # <url>, [list of pages it links to]
+    next_depth = []
+    depth = 0
+    while tocrawl and depth <= max_depth: 
+        page = tocrawl.pop()
+        if page not in crawled:
+        	if loadPage(page) is not None:
+	            print(page)
+	            outlinks, inlinks = loadPage(page)
+	            allLinks = inlinks
+	            # Uncomment following line to store data in DB
+	            # storeUrl(page)
+	            graph[page] = allLinks
+	            # union(tocrawl, allLinks)
+	            union(next_depth, allLinks)
+	            crawled.append(page)
+        if not tocrawl:
+            tocrawl, next_depth = next_depth, []
+            depth += 1
+    return graph
+
+
 if __name__ == '__main__':
 	if len(arguments) == 1:
 		try :
 			url = arguments[0]
-			crawl_web(url, options.depth)
+			if options.s:
+				crawl_scope(url, options.depth)
+			else:
+				crawl_full_web(url, options.depth)
 		except KeyboardInterrupt:
 			print("Scan canceled by user.")
 			print("Thank you for crawling.")
