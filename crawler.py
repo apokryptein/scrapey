@@ -66,7 +66,7 @@ def splitAddress(address):
     return addressParts
 
 
-# Get HITML of URL and create BS object
+# Get HTML of URL and create BS object
 def loadPage(startingSite):
 	r = Request(startingSite, headers={'User-Agent': 'Mozilla/5.0'})
 	try:
